@@ -1,11 +1,18 @@
 import os
 import numpy as np
-import cv2
+import imageio
 import h5py
 import argparse
 
 import matplotlib.pyplot as plt
 from constants import DT
+
+try:
+    import cv2
+    CV2_AVAILABLE = True
+except ImportError:
+    CV2_AVAILABLE = False
+    print("OpenCV not available. Using imageio for video saving.")
 
 import IPython
 e = IPython.embed
@@ -33,30 +40,54 @@ def load_hdf5(dataset_dir, dataset_name):
 def main(args):
     dataset_dir = args['dataset_dir']
     episode_idx = args['episode_idx']
+    use_cv2 = args.get('use_cv2', False)
     dataset_name = f'episode_{episode_idx}'
 
     qpos, qvel, action, image_dict = load_hdf5(dataset_dir, dataset_name)
-    save_videos(image_dict, DT, video_path=os.path.join(dataset_dir, dataset_name + '_video.mp4'))
+    save_videos(image_dict, DT, video_path=os.path.join(dataset_dir, dataset_name + '_video.mp4'), use_cv2=use_cv2)
     visualize_joints(qpos, action, plot_path=os.path.join(dataset_dir, dataset_name + '_qpos.png'))
     # visualize_timestamp(t_list, dataset_path) # TODO addn timestamp back
 
 
-def save_videos(video, dt, video_path=None):
+def save_videos(video, dt, video_path=None, use_cv2=False):
+    if use_cv2 and not CV2_AVAILABLE:
+        print("OpenCV not available. Falling back to imageio.")
+        use_cv2 = False
+    
     if isinstance(video, list):
         cam_names = list(video[0].keys())
         h, w, _ = video[0][cam_names[0]].shape
         w = w * len(cam_names)
         fps = int(1/dt)
-        out = cv2.VideoWriter(video_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w, h))
-        for ts, image_dict in enumerate(video):
-            images = []
-            for cam_name in cam_names:
-                image = image_dict[cam_name]
-                image = image[:, :, [2, 1, 0]] # swap B and R channel
-                images.append(image)
-            images = np.concatenate(images, axis=1)
-            out.write(images)
-        out.release()
+        
+        if use_cv2:
+            # OpenCV video saving
+            fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+            writer = cv2.VideoWriter(video_path, fourcc, fps, (w, h))
+            
+            for ts, image_dict in enumerate(video):
+                images = []
+                for cam_name in cam_names:
+                    image = image_dict[cam_name]
+                    images.append(image)
+                combined_image = np.concatenate(images, axis=1)
+                writer.write(combined_image)
+            writer.release()
+        else:
+            # Imageio video saving
+            frames = []
+            for ts, image_dict in enumerate(video):
+                images = []
+                for cam_name in cam_names:
+                    image = image_dict[cam_name]
+                    image = image[:, :, [2, 1, 0]] # swap B and R channel
+                    images.append(image)
+                combined_image = np.concatenate(images, axis=1)
+                frames.append(combined_image)
+            
+            # Save video using imageio with ffmpeg
+            imageio.mimsave(video_path, frames, fps=fps, codec='libx264')
+        
         print(f'Saved video to: {video_path}')
     elif isinstance(video, dict):
         cam_names = list(video.keys())
@@ -67,12 +98,27 @@ def save_videos(video, dt, video_path=None):
 
         n_frames, h, w, _ = all_cam_videos.shape
         fps = int(1 / dt)
-        out = cv2.VideoWriter(video_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w, h))
-        for t in range(n_frames):
-            image = all_cam_videos[t]
-            image = image[:, :, [2, 1, 0]]  # swap B and R channel
-            out.write(image)
-        out.release()
+        
+        if use_cv2:
+            # OpenCV video saving
+            fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+            writer = cv2.VideoWriter(video_path, fourcc, fps, (w, h))
+            
+            for t in range(n_frames):
+                image = all_cam_videos[t]
+                writer.write(image)
+            writer.release()
+        else:
+            # Imageio video saving
+            frames = []
+            for t in range(n_frames):
+                image = all_cam_videos[t]
+                image = image[:, :, [2, 1, 0]]  # swap B and R channel
+                frames.append(image)
+            
+            # Save video using imageio with ffmpeg
+            imageio.mimsave(video_path, frames, fps=fps, codec='libx264')
+        
         print(f'Saved video to: {video_path}')
 
 
@@ -144,4 +190,5 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--dataset_dir', action='store', type=str, help='Dataset dir.', required=True)
     parser.add_argument('--episode_idx', action='store', type=int, help='Episode index.', required=False)
+    parser.add_argument('--use_cv2', action='store_true', help='Use OpenCV for video saving instead of imageio.')
     main(vars(parser.parse_args()))
