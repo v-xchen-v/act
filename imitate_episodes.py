@@ -3,6 +3,7 @@ import numpy as np
 import os
 import pickle
 import argparse
+import yaml
 import matplotlib.pyplot as plt
 from copy import deepcopy
 from tqdm import tqdm
@@ -20,6 +21,58 @@ from sim_env import BOX_POSE
 
 import IPython
 e = IPython.embed
+
+def load_config_from_yaml(config_path):
+    """Load configuration from YAML file and convert to the expected format."""
+    with open(config_path, 'r') as f:
+        config = yaml.safe_load(f)
+    
+    # Map YAML config keys to expected argument keys
+    args_dict = {}
+    
+    # Direct mappings
+    direct_mappings = {
+        'eval': 'eval',
+        'onscreen_render': 'onscreen_render', 
+        'ckpt_dir': 'ckpt_dir',
+        'policy_class': 'policy_class',
+        'task_name': 'task_name',
+        'batch_size': 'batch_size',
+        'seed': 'seed',
+        'num_epochs': 'num_epochs',
+        'lr': 'lr',
+        'kl_weight': 'kl_weight',
+        'hidden_dim': 'hidden_dim',
+        'dim_feedforward': 'dim_feedforward',
+        'temporal_agg': 'temporal_agg',
+        'chunk_size': 'chunk_size',
+    }
+    
+    # Apply direct mappings
+    for yaml_key, arg_key in direct_mappings.items():
+        if yaml_key in config:
+            args_dict[arg_key] = config[yaml_key]
+    
+    # Set defaults for boolean flags if not present
+    if 'eval' not in args_dict:
+        args_dict['eval'] = False
+    if 'onscreen_render' not in args_dict:
+        args_dict['onscreen_render'] = False
+    if 'temporal_agg' not in args_dict:
+        args_dict['temporal_agg'] = False
+        
+    return args_dict
+
+def merge_args_with_config(args_dict, config_dict):
+    """Merge command line arguments with config file, giving priority to command line."""
+    merged = config_dict.copy()
+    
+    # Override config with any non-None command line arguments
+    for key, value in args_dict.items():
+        if value is not None:
+            merged[key] = value
+            
+    return merged
 
 def main(args):
     set_seed(1)
@@ -415,15 +468,20 @@ def plot_history(train_history, validation_history, num_epochs, ckpt_dir, seed):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+    
+    # Option to load config from YAML file
+    parser.add_argument('--config', action='store', type=str, help='path to YAML config file', required=False)
+    
+    # Original command line arguments (now optional when using config file)
     parser.add_argument('--eval', action='store_true')
     parser.add_argument('--onscreen_render', action='store_true')
-    parser.add_argument('--ckpt_dir', action='store', type=str, help='ckpt_dir', required=True)
-    parser.add_argument('--policy_class', action='store', type=str, help='policy_class, capitalize', required=True)
-    parser.add_argument('--task_name', action='store', type=str, help='task_name', required=True)
-    parser.add_argument('--batch_size', action='store', type=int, help='batch_size', required=True)
-    parser.add_argument('--seed', action='store', type=int, help='seed', required=True)
-    parser.add_argument('--num_epochs', action='store', type=int, help='num_epochs', required=True)
-    parser.add_argument('--lr', action='store', type=float, help='lr', required=True)
+    parser.add_argument('--ckpt_dir', action='store', type=str, help='ckpt_dir', required=False)
+    parser.add_argument('--policy_class', action='store', type=str, help='policy_class, capitalize', required=False)
+    parser.add_argument('--task_name', action='store', type=str, help='task_name', required=False)
+    parser.add_argument('--batch_size', action='store', type=int, help='batch_size', required=False)
+    parser.add_argument('--seed', action='store', type=int, help='seed', required=False)
+    parser.add_argument('--num_epochs', action='store', type=int, help='num_epochs', required=False)
+    parser.add_argument('--lr', action='store', type=float, help='lr', required=False)
 
     # for ACT
     parser.add_argument('--kl_weight', action='store', type=int, help='KL Weight', required=False)
@@ -432,4 +490,23 @@ if __name__ == '__main__':
     parser.add_argument('--dim_feedforward', action='store', type=int, help='dim_feedforward', required=False)
     parser.add_argument('--temporal_agg', action='store_true')
     
-    main(vars(parser.parse_args()))
+    args = parser.parse_args()
+    args_dict = vars(args)
+    
+    # Load configuration
+    if args.config:
+        # Load from YAML config file
+        config_dict = load_config_from_yaml(args.config)
+        # Merge with command line arguments (command line takes priority)
+        final_args = merge_args_with_config(args_dict, config_dict)
+    else:
+        # Use original command line arguments only
+        final_args = args_dict
+        
+        # Check that required arguments are provided when not using config file
+        required_args = ['ckpt_dir', 'policy_class', 'task_name', 'batch_size', 'seed', 'num_epochs', 'lr']
+        for arg in required_args:
+            if final_args[arg] is None:
+                parser.error(f"--{arg} is required when not using --config")
+    
+    main(final_args)
