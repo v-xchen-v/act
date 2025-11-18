@@ -1,7 +1,7 @@
 import pathlib
 
 ### Task parameters
-DATA_DIR = '<put your data dir here>'
+DATA_DIR = "../../data/processed/geniesim-agibot_challenge_2025-teleop-dataset-100eps-act-v1"
 SIM_TASK_CONFIGS = {
     'sim_transfer_cube_scripted':{
         'dataset_dir': DATA_DIR + '/sim_transfer_cube_scripted',
@@ -30,6 +30,13 @@ SIM_TASK_CONFIGS = {
         'episode_len': 500,
         'camera_names': ['top']
     },
+    'sim_pack_in_supermarket_teleop': {
+        'dataset_dir': DATA_DIR + '/sim_pack_in_supermarket_teleop',
+        'num_episodes': 161,
+        # 'episode_len': 575,
+        'episode_len': 977,
+        'camera_names': ['hand_left_color', 'hand_right_color', 'head_color']
+    }
 }
 
 ### Simulation envs fixed constants

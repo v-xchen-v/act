@@ -52,6 +52,9 @@ def load_config_from_yaml(config_path):
     for yaml_key, arg_key in direct_mappings.items():
         if yaml_key in config:
             args_dict[arg_key] = config[yaml_key]
+        if yaml_key == 'lr':
+            # convert from str to float
+            args_dict[arg_key] = float(config[yaml_key])
     
     # Set defaults for boolean flags if not present
     if 'eval' not in args_dict:
@@ -470,7 +473,10 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     
     # Option to load config from YAML file
-    parser.add_argument('--config', action='store', type=str, help='path to YAML config file', required=False)
+    parser.add_argument('--config', 
+                        default="/home/xichen6/Documents/repos/vla-starter-xc/experiments/act/exp004-2025-11-17-sim_pack_in_supermarket_teleop-baseline-exp-v1/config.yaml",
+                        action='store', type=str, help='path to YAML config file', 
+                        required=False)
     
     # Original command line arguments (now optional when using config file)
     parser.add_argument('--eval', action='store_true')
@@ -495,6 +501,7 @@ if __name__ == '__main__':
     
     # Load configuration
     if args.config:
+        print(f'Loading configuration from {args.config}')
         # Load from YAML config file
         config_dict = load_config_from_yaml(args.config)
         # Merge with command line arguments (command line takes priority)

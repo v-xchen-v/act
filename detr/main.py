@@ -55,11 +55,11 @@ def get_args_parser():
     # repeat args in imitate_episodes just to avoid error. Will not be used
     parser.add_argument('--eval', action='store_true')
     parser.add_argument('--onscreen_render', action='store_true')
-    parser.add_argument('--ckpt_dir', action='store', type=str, help='ckpt_dir', required=True)
-    parser.add_argument('--policy_class', action='store', type=str, help='policy_class, capitalize', required=True)
-    parser.add_argument('--task_name', action='store', type=str, help='task_name', required=True)
-    parser.add_argument('--seed', action='store', type=int, help='seed', required=True)
-    parser.add_argument('--num_epochs', action='store', type=int, help='num_epochs', required=True)
+    parser.add_argument('--ckpt_dir', action='store', type=str, help='ckpt_dir', required=False)
+    parser.add_argument('--policy_class', action='store', type=str, help='policy_class, capitalize', required=False)
+    parser.add_argument('--task_name', action='store', type=str, help='task_name', required=False)
+    parser.add_argument('--seed', action='store', type=int, help='seed', required=False)
+    parser.add_argument('--num_epochs', action='store', type=int, help='num_epochs', required=False)
     parser.add_argument('--kl_weight', action='store', type=int, help='KL Weight', required=False)
     parser.add_argument('--chunk_size', action='store', type=int, help='chunk_size', required=False)
     parser.add_argument('--temporal_agg', action='store_true')
@@ -74,6 +74,12 @@ def build_ACT_model_and_optimizer(args_override):
     for k, v in args_override.items():
         setattr(args, k, v)
 
+    # # check the required here instead of argparse to enable yaml as config
+    # required_args = ['ckpt_dir', 'policy_class', 'task_name', 'seed',
+    #                  'num_epochs']
+    # for req_arg in required_args:
+    #     if getattr(args, req_arg) is None:
+    #         raise ValueError(f'Missing required argument: {req_arg}')
     model = build_ACT_model(args)
     model.cuda()
 
