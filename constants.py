@@ -31,7 +31,7 @@ SIM_TASK_CONFIGS = {
         'camera_names': ['top']
     },
     'sim_pack_in_supermarket_teleop': {
-        'dataset_dir': DATA_DIR + '/sim_pack_in_supermarket_teleop',
+        'dataset_dir': DATA_DIR + '/sim_pack_in_supermarket_teleop_fix',
         'num_episodes': 161,
         # 'episode_len': 575,
         'episode_len': 977,

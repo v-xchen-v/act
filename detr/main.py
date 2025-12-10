@@ -19,6 +19,11 @@ def get_args_parser():
     parser.add_argument('--lr_drop', default=200, type=int) # not used
     parser.add_argument('--clip_max_norm', default=0.1, type=float, # not used
                         help='gradient clipping max norm')
+    
+    # add config argument to pass in config file path
+    parser.add_argument('--config', 
+                        action='store', type=str, help='path to YAML config file', 
+                        required=False)
 
     # Model parameters
     # * Backbone
